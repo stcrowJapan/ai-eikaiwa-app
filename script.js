@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchAIResponse(message) {
         const level = levelSelect.value;
-        const thinkingIndicator = addMessage('<i>Thinking...</i>', 'ai');
+        const thinkingIndicator = addMessage("<i>Thinking...</i>", 'ai');
         speakBtn.disabled = true;
 
         try {
@@ -86,7 +86,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const formattedResponse = aiResponse.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
             addMessage(formattedResponse, 'ai');
-            conversationHistory.push({ role: 'user', parts: [{ text: message }] });
             conversationHistory.push({ role: 'model', parts: [{ text: aiResponse }] });
 
         } catch (error) {
@@ -106,60 +105,4 @@ document.addEventListener('DOMContentLoaded', () => {
         conversationHistory = [];
         chatWindow.innerHTML = '';
         addMessage("Please select a level and click 'Start Conversation' to begin.", 'ai');
-        speakBtn.innerHTML = '会話を開始 <span class="icon">🎤</span>';
-        speakBtn.classList.remove('is-speaking');
-        speakBtn.disabled = false;
-    }
-
-    if (recognition) {
-        recognition.onresult = (event) => {
-            let finalTranscript = '';
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-                if (event.results[i].isFinal) {
-                    finalTranscript += event.results[i][0].transcript;
-                }
-            }
-
-            if (finalTranscript) {
-                recognition.stop(); // Stop listening while we process
-                fetchAIResponse(finalTranscript);
-            }
-        };
-
-        recognition.onend = () => {};
-
-        recognition.onerror = (event) => {
-            console.error('Speech recognition error:', event.error);
-            if (event.error !== 'aborted') {
-                isConversationActive = false;
-                resetConversation();
-            }
-        };
-    }
-
-    speakBtn.addEventListener('click', () => {
-        if (isConversationActive) {
-            isConversationActive = false;
-            recognition.stop();
-            speakBtn.innerHTML = '会話を再開 <span class="icon">🎤</span>';
-            speakBtn.classList.remove('is-speaking');
-        } else {
-            isConversationActive = true;
-            recognition.start();
-            speakBtn.innerHTML = '会話を一時停止 <span class="icon">⏸️</span>';
-            speakBtn.classList.add('is-speaking');
-        }
-    });
-
-    chatWindow.addEventListener('click', (event) => {
-        const listenBtn = event.target.closest('.listen-btn-bubble');
-        if (listenBtn) {
-            const text = listenBtn.dataset.textToSpeak;
-            speak(text);
-        }
-    });
-
-    levelSelect.addEventListener('change', resetConversation);
-
-    resetConversation();
-});
+        speakBtn.innerHTML = '会話を開始 <span class=
