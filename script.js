@@ -6,17 +6,55 @@ document.addEventListener('DOMContentLoaded', () => {
     const levelSelect = document.getElementById('level-select');
     const apiKeyInput = document.getElementById('api-key');
     const saveKeyBtn = document.getElementById('save-key');
+    const clearHistoryBtn = document.getElementById('clear-history');
 
     let isConversationActive = false;
     let conversationHistory = [];
     let genAI = null;
     let model = null;
 
-    // Load saved API key
+    // Load saved API key and conversation history
     const savedApiKey = localStorage.getItem('gemini-api-key');
     if (savedApiKey) {
         apiKeyInput.value = savedApiKey;
         initializeGemini(savedApiKey);
+    }
+
+    // Load conversation history
+    function loadConversationHistory() {
+        const level = levelSelect.value;
+        const saved = localStorage.getItem(`conversation-history-${level}`);
+        if (saved) {
+            try {
+                conversationHistory = JSON.parse(saved);
+                displayConversationHistory();
+            } catch (e) {
+                conversationHistory = [];
+            }
+        } else {
+            conversationHistory = [];
+        }
+    }
+
+    // Save conversation history
+    function saveConversationHistory() {
+        const level = levelSelect.value;
+        localStorage.setItem(`conversation-history-${level}`, JSON.stringify(conversationHistory));
+    }
+
+    // Display saved conversation history
+    function displayConversationHistory() {
+        chatWindow.innerHTML = '';
+        conversationHistory.forEach(msg => {
+            if (msg.role === 'user') {
+                addMessage(msg.parts[0].text, 'user');
+            } else if (msg.role === 'model') {
+                addMessage(msg.parts[0].text, 'ai');
+            }
+        });
+        if (conversationHistory.length === 0 && model) {
+            addMessage("レベルを選択して「会話を開始」ボタンを押すと、AIとの英会話練習が始まります。間違いがあれば日本語でヒントをくれます！", 'ai');
+        }
     }
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -100,31 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
         speakBtn.disabled = true;
 
         try {
-            const levelPrompts = {
-                'eiken3': 'Eiken Grade 3 (junior high school level)',
-                'eiken-pre2': 'Eiken Pre-2nd Grade (high school intermediate level)', 
-                'eiken2': 'Eiken 2nd Grade (high school advanced level)'
-            };
-            
-            const systemPrompt = `You are a friendly and encouraging English conversation tutor. Your student is practicing for ${levelPrompts[level]}. 
-
-IMPORTANT INSTRUCTIONS:
-1. **Maintain Natural Conversation**: Have a flowing, natural conversation about everyday topics appropriate for ${levelPrompts[level]}. Don't just ask random questions - build on what the student says.
-
-2. **Provide Japanese Hints**: When the student makes grammatical errors or uses unnatural expressions, ALWAYS provide corrections in this format:
-   - First, give a natural English response to their message
-   - Then add a new paragraph with: "💡 ヒント: [Japanese explanation of the error and correct usage]"
-   
-3. **Keep Conversation Flowing**: Always end with a follow-up question or comment to continue the conversation naturally. Topics should be age-appropriate and interesting.
-
-4. **Be Encouraging**: Praise good usage and be supportive of mistakes. Learning English should be enjoyable.
-
-5. **Use Appropriate Level**: 
-   - Grade 3: Simple present/past tense, basic vocabulary, everyday situations
-   - Pre-2: Present perfect, conditionals, hobbies, school life, travel
-   - Grade 2: Complex grammar, abstract topics, opinions, future plans
-
-Let's have a natural conversation! Start by greeting the student and asking about their day or interests.`;
+            const systemPrompt = `English tutor for ${level}. Be friendly. If student makes errors, respond naturally then add "💡 ヒント:" with Japanese correction. Keep conversation flowing with follow-up questions.`;
             
             const recentHistory = conversationHistory.length > 10 ? conversationHistory.slice(-10) : conversationHistory;
 
@@ -147,6 +161,7 @@ Let's have a natural conversation! Start by greeting the student and asking abou
             const formattedResponse = aiResponse.replace(/\\n/g, '<br>').replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>');
             addMessage(formattedResponse, 'ai');
             conversationHistory.push({ role: 'model', parts: [{ text: aiResponse }] });
+            saveConversationHistory(); // 会話履歴を保存
             speak(aiResponse);
 
         } catch (error) {
@@ -167,14 +182,9 @@ Let's have a natural conversation! Start by greeting the student and asking abou
         isConversationActive = false;
         if (recognition) recognition.stop();
         if (synth.speaking) synth.cancel();
-        conversationHistory = [];
-        chatWindow.innerHTML = '';
         
-        if (model) {
-            addMessage("レベルを選択して「会話を開始」ボタンを押すと、AIとの英会話練習が始まります。間違いがあれば日本語でヒントをくれます！", 'ai');
-        } else {
-            addMessage("APIキーを入力してSaveボタンを押してから会話を開始してください。", 'ai');
-        }
+        // レベル別の会話履歴を読み込み
+        loadConversationHistory();
         
         speakBtn.innerHTML = '会話を開始 <span class="icon">🎤</span>';
         speakBtn.classList.remove('is-speaking');
@@ -191,6 +201,7 @@ Let's have a natural conversation! Start by greeting the student and asking abou
                 recognition.stop();
                 addMessage(finalTranscript, 'user');
                 conversationHistory.push({ role: 'user', parts: [{ text: finalTranscript }] });
+                saveConversationHistory(); // ユーザーメッセージも保存
                 fetchAIResponse(finalTranscript);
             }
         };
@@ -242,6 +253,18 @@ Let's have a natural conversation! Start by greeting the student and asking abou
     });
 
     levelSelect.addEventListener('change', resetConversation);
+
+    clearHistoryBtn.addEventListener('click', () => {
+        if (confirm('現在のレベルの会話履歴をすべて削除しますか？')) {
+            const level = levelSelect.value;
+            localStorage.removeItem(`conversation-history-${level}`);
+            conversationHistory = [];
+            chatWindow.innerHTML = '';
+            if (model) {
+                addMessage("会話履歴がクリアされました。新しい会話を開始できます。", 'ai');
+            }
+        }
+    });
 
     resetConversation();
 });
