@@ -5,17 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Eikaiwa Practice</title>
     <link rel="stylesheet" href="styles/style.css">
+    <script type="importmap">
+      {
+        "imports": {
+          "@google/generative-ai": "https://esm.run/@google/generative-ai"
+        }
+      }
+    </script>
 </head>
 <body>
     <div class="container">
         <h1>AI Eikaiwa Practice</h1>
         <div class="settings">
-            <label for="level-select">Level:</label>
-            <select id="level-select">
-                <option value="eiken3">英検3級</option>
-                <option value="eiken-pre2">英検準2級</option>
-                <option value="eiken2">英検2級</option>
-            </select>
+            <div class="setting-group">
+                <label for="level-select">Level:</label>
+                <select id="level-select">
+                    <option value="eiken3">英検3級</option>
+                    <option value="eiken-pre2">英検準2級</option>
+                    <option value="eiken2">英検2級</option>
+                </select>
+            </div>
+            <div class="setting-group">
+                <label for="api-key">API Key:</label>
+                <input type="password" id="api-key" placeholder="Gemini API Key">
+                <button id="save-key">Save</button>
+            </div>
         </div>
         <div id="chat-window">
             <!-- Conversation log will be dynamically inserted here -->
@@ -25,6 +39,6 @@
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script type="module" src="script.js"></script>
 </body>
 </html>
