@@ -10,10 +10,10 @@ const genAI = new GoogleGenerativeAI(API_KEY);
 const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
 const generationConfig = {
-    temperature: 0.9,
+    temperature: 0.7,
     topK: 1,
     topP: 1,
-    maxOutputTokens: 2048,
+    maxOutputTokens: 1024,
 };
 
 const safetySettings = [
@@ -23,12 +23,7 @@ const safetySettings = [
     { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
 ];
 
-const systemPrompt = `You are a friendly and helpful English tutor. Your name is Gemini. Your student wants to practice conversational English at the Eiken Grade 3 level. Your task is to respond to the student's message based on the following rules:
-1. **Maintain the Persona**: Be encouraging and friendly.
-2. **Adjust to the Level**: Use vocabulary, grammar, and topics appropriate for the specified Eiken level.
-3. **Provide Corrections in Japanese**: If the student's message has grammatical errors or unnatural phrasing, gently correct it. First, provide a natural and encouraging English response. Then, in a new paragraph, add a "💡 ヒント:" section. The explanation in this section must be written entirely in Japanese. For example: "That's a great question! I'm doing well, thanks for asking. 💡 ヒント: 今の文章でも通じますが、「お元気ですか？」と尋ねる時は、'How are you doing?' のように言うと、より自然な表現になります。"
-4. **Lead the Conversation**: Don't just answer. Ask follow-up questions to keep the conversation going.
-5. **Keep it Conversational**: Your entire response, including tips, should feel like a natural part of the conversation. Don't be too formal.`;
+const systemPrompt = `English tutor for Eiken practice. Be friendly and encouraging. If student makes errors, respond naturally then add "💡 ヒント:" with Japanese correction. Ask follow-up questions.`;
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
@@ -43,7 +38,7 @@ export default async function handler(req, res) {
         }
 
         // ★★★ 修正点：互換性の高い形式でプロンプトと履歴を構築 ★★★
-        const recentHistory = history.length > 10 ? history.slice(-10) : history;
+        const recentHistory = history.length > 6 ? history.slice(-6) : history;
 
         const contents = [
             // 常にシステムプロンプトを最初のuserメッセージとして含める
@@ -53,12 +48,18 @@ export default async function handler(req, res) {
             { role: 'user', parts: [{ text: message }] }
         ];
 
-        const result = await model.generateContent({
-            contents: contents,
-            // systemInstruction を使わない形式に変更
-            generationConfig,
-            safetySettings,
-        });
+        const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Request timeout')), 25000)
+        );
+
+        const result = await Promise.race([
+            model.generateContent({
+                contents: contents,
+                generationConfig,
+                safetySettings,
+            }),
+            timeoutPromise
+        ]);
 
         const response = await result.response;
         const text = response.text();
