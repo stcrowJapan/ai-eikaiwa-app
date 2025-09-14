@@ -4,6 +4,7 @@ const API_KEY = process.env.API_KEY;
 
 // APIキーが設定されていない場合は、早期にエラーを返す
 if (!API_KEY) {
+    // このエラーはサーバーの起動時に発生し、Vercelのログで確認できます
     throw new Error("API key is not set in environment variables.");
 }
 
@@ -42,8 +43,9 @@ export default async function handler(req, res) {
             eiken2: 'Eiken Grade 2'
         };
 
-        const systemPrompt = `You are a friendly and helpful English tutor...`; // Prompt is long, assuming it's correct from previous steps
+        const systemPrompt = `You are a friendly and helpful English tutor...`; // Assuming prompt is correct
 
+        // ★★★ タイムアウト対策：AIに渡す履歴を直近10ターンに制限 ★★★
         const recentHistory = history.length > 10 ? history.slice(-10) : history;
 
         const contents = [
@@ -68,7 +70,6 @@ export default async function handler(req, res) {
 
     } catch (error) {
         console.error('Error in /api/chat:', error);
-        // ★★★ 修正点：詳細なエラーメッセージをフロントエンドに返す ★★★
         res.status(500).json({ error: `Backend Error: ${error.message}` });
     }
 }
