@@ -1,0 +1,8 @@
+{
+  "name": "ai-eikaiwa-vercel",
+  "version": "1.0.0",
+  "description": "AI Eikaiwa app for Vercel deployment",
+  "dependencies": {
+    "@google/generative-ai": "^0.14.1"
+  }
+}
