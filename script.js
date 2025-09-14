@@ -22,12 +22,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function addMessage(text, sender) {
         const messageWrapper = document.createElement('div');
         messageWrapper.className = `message ${sender}-message`;
-        
         const messageBubble = document.createElement('p');
         const textSpan = document.createElement('span');
         textSpan.innerHTML = text;
         messageBubble.appendChild(textSpan);
-
         if (sender === 'ai') {
             const listenBtn = document.createElement('button');
             listenBtn.className = 'listen-btn-bubble';
@@ -35,7 +33,6 @@ document.addEventListener('DOMContentLoaded', () => {
             listenBtn.dataset.textToSpeak = text;
             messageBubble.appendChild(listenBtn);
         }
-
         messageWrapper.appendChild(messageBubble);
         chatWindow.appendChild(messageWrapper);
         chatWindow.scrollTop = chatWindow.scrollHeight;
@@ -45,20 +42,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function speak(text) {
         if (isConversationActive) recognition.stop();
         if (synth.speaking) synth.cancel();
-        
         const strippedText = text.replace(/<[^>]*>/g, ' ');
         const mainPart = strippedText.split('💡')[0];
-
         const utterance = new SpeechSynthesisUtterance(mainPart);
         utterance.lang = 'en-US';
-        utterance.onstart = () => {};
-        utterance.onend = () => {
-            if (isConversationActive) recognition.start();
-        };
-        utterance.onerror = (event) => {
-            console.error('SpeechSynthesis Error', event);
-            if (isConversationActive) recognition.start();
-        };
+        utterance.onend = () => { if (isConversationActive) recognition.start(); };
+        utterance.onerror = (event) => { console.error('SpeechSynthesis Error', event); if (isConversationActive) recognition.start(); };
         synth.speak(utterance);
     }
 
@@ -76,9 +65,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
             thinkingIndicator.remove();
 
+            // ★★★ タイムアウトエラーに対応する修正 ★★★
             if (!res.ok) {
-                const errorData = await res.json();
-                throw new Error(errorData.error || 'An unknown server error occurred.');
+                const contentType = res.headers.get("content-type");
+                let errorText;
+                if (contentType && contentType.indexOf("application/json") !== -1) {
+                    const errorData = await res.json();
+                    errorText = errorData.error;
+                } else {
+                    errorText = await res.text(); // Vercelのタイムアウトページ(HTML)などをテキストとして取得
+                }
+                // 504 Gateway TimeoutはVercelのタイムアウトを示す
+                if(res.status === 504){
+                    throw new Error('The AI took too long to respond (Server Timeout). Please try a shorter message.');
+                } else {
+                    throw new Error(errorText);
+                }
             }
 
             const data = await res.json();
@@ -87,8 +89,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const formattedResponse = aiResponse.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
             addMessage(formattedResponse, 'ai');
             conversationHistory.push({ role: 'model', parts: [{ text: aiResponse }] });
-
-            // ★★★ 音声の自動再生を試みる ★★★
             speak(aiResponse);
 
         } catch (error) {
@@ -104,7 +104,6 @@ document.addEventListener('DOMContentLoaded', () => {
         isConversationActive = false;
         if (recognition) recognition.stop();
         if (synth.speaking) synth.cancel();
-        
         conversationHistory = [];
         chatWindow.innerHTML = '';
         addMessage("Please select a level and click 'Start Conversation' to begin.", 'ai');
@@ -117,31 +116,17 @@ document.addEventListener('DOMContentLoaded', () => {
         recognition.onresult = (event) => {
             let finalTranscript = '';
             for (let i = event.resultIndex; i < event.results.length; ++i) {
-                if (event.results[i].isFinal) {
-                    finalTranscript += event.results[i][0].transcript;
-                }
+                if (event.results[i].isFinal) { finalTranscript += event.results[i][0].transcript; }
             }
-
             if (finalTranscript) {
                 recognition.stop();
-                
-                // ★★★ 重要なバグ修正：ユーザーの発言を先に表示し、履歴に保存する ★★★
                 addMessage(finalTranscript, 'user');
                 conversationHistory.push({ role: 'user', parts: [{ text: finalTranscript }] });
-
                 fetchAIResponse(finalTranscript);
             }
         };
-
         recognition.onend = () => {};
-
-        recognition.onerror = (event) => {
-            console.error('Speech recognition error:', event.error);
-            if (event.error !== 'aborted') {
-                isConversationActive = false;
-                resetConversation();
-            }
-        };
+        recognition.onerror = (event) => { console.error('Speech recognition error:', event.error); if (event.error !== 'aborted') { resetConversation(); } };
     }
 
     speakBtn.addEventListener('click', () => {
@@ -160,10 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     chatWindow.addEventListener('click', (event) => {
         const listenBtn = event.target.closest('.listen-btn-bubble');
-        if (listenBtn) {
-            const text = listenBtn.dataset.textToSpeak;
-            speak(text);
-        }
+        if (listenBtn) { speak(listenBtn.dataset.textToSpeak); }
     });
 
     levelSelect.addEventListener('change', resetConversation);
