@@ -46,19 +46,24 @@ export default async function handler(req, res) {
 4. **Lead the Conversation**: Don't just answer. Ask follow-up questions to keep the conversation going.
 5. **Keep it Conversational**: Your entire response, including tips, should feel like a natural part of the conversation. Don't be too formal.`;
 
-        const recentHistory = history && history.length > 10 ? history.slice(-10) : history || [];
+        const recentHistory = history && history.length > 10 ? history.slice(-10) : [];
 
-        const chat = model.startChat({
-            generationConfig,
-            safetySettings,
-            history: recentHistory,
+        const contents = [
+            ...recentHistory,
+            { role: 'user', parts: [{ text: message }] }
+        ];
+
+        // ★★★ 修正点：よりシンプルで確実な generateContent メソッドを使用 ★★★
+        const result = await model.generateContent({
+            contents: contents,
             systemInstruction: {
                 role: 'system',
                 parts: [{ text: systemPrompt }]
             },
+            generationConfig,
+            safetySettings,
         });
 
-        const result = await chat.sendMessage(message);
         const response = await result.response;
         const text = response.text();
         
