@@ -2,9 +2,7 @@ const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require('@googl
 
 const API_KEY = process.env.API_KEY;
 
-// APIキーが設定されていない場合は、早期にエラーを返す
 if (!API_KEY) {
-    // このエラーはサーバーの起動時に発生し、Vercelのログで確認できます
     throw new Error("API key is not set in environment variables.");
 }
 
@@ -43,9 +41,14 @@ export default async function handler(req, res) {
             eiken2: 'Eiken Grade 2'
         };
 
-        const systemPrompt = `You are a friendly and helpful English tutor...`; // Assuming prompt is correct
+        // ★★★ 修正点：完全なシステムプロンプトを記述 ★★★
+        const systemPrompt = `You are a friendly and helpful English tutor. Your name is Gemini. Your student wants to practice conversational English at the ${levelMap[level] || 'Eiken Grade 3'} level. Your task is to respond to the student's message based on the following rules:
+1. **Maintain the Persona**: Be encouraging and friendly.
+2. **Adjust to the Level**: Use vocabulary, grammar, and topics appropriate for the specified Eiken level.
+3. **Provide Corrections in Japanese**: If the student's message has grammatical errors or unnatural phrasing, gently correct it. First, provide a natural and encouraging English response. Then, in a new paragraph, add a "💡 ヒント:" section. The explanation in this section must be written entirely in Japanese. For example: "That's a great question! I'm doing well, thanks for asking. 💡 ヒント: 今の文章でも通じますが、「お元気ですか？」と尋ねる時は、'How are you doing?' のように言うと、より自然な表現になります。"
+4. **Lead the Conversation**: Don't just answer. Ask follow-up questions to keep the conversation going.
+5. **Keep it Conversational**: Your entire response, including tips, should feel like a natural part of the conversation. Don't be too formal.`;
 
-        // ★★★ タイムアウト対策：AIに渡す履歴を直近10ターンに制限 ★★★
         const recentHistory = history.length > 10 ? history.slice(-10) : history;
 
         const contents = [
