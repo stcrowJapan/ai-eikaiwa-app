@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const listenBtn = document.createElement('button');
             listenBtn.className = 'listen-btn-bubble';
             listenBtn.innerHTML = '🔊';
-            listenBtn.dataset.textToSpeak = text; // Store original text with markdown/HTML
+            listenBtn.dataset.textToSpeak = text;
             messageBubble.appendChild(listenBtn);
         }
 
@@ -88,6 +88,9 @@ document.addEventListener('DOMContentLoaded', () => {
             addMessage(formattedResponse, 'ai');
             conversationHistory.push({ role: 'model', parts: [{ text: aiResponse }] });
 
+            // ★★★ 音声の自動再生を試みる ★★★
+            speak(aiResponse);
+
         } catch (error) {
             thinkingIndicator?.remove();
             addMessage(`Sorry, an error occurred: ${error.message}`, 'ai');
@@ -105,4 +108,65 @@ document.addEventListener('DOMContentLoaded', () => {
         conversationHistory = [];
         chatWindow.innerHTML = '';
         addMessage("Please select a level and click 'Start Conversation' to begin.", 'ai');
-        speakBtn.innerHTML = '会話を開始 <span class=
+        speakBtn.innerHTML = '会話を開始 <span class="icon">🎤</span>';
+        speakBtn.classList.remove('is-speaking');
+        speakBtn.disabled = false;
+    }
+
+    if (recognition) {
+        recognition.onresult = (event) => {
+            let finalTranscript = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    finalTranscript += event.results[i][0].transcript;
+                }
+            }
+
+            if (finalTranscript) {
+                recognition.stop();
+                
+                // ★★★ 重要なバグ修正：ユーザーの発言を先に表示し、履歴に保存する ★★★
+                addMessage(finalTranscript, 'user');
+                conversationHistory.push({ role: 'user', parts: [{ text: finalTranscript }] });
+
+                fetchAIResponse(finalTranscript);
+            }
+        };
+
+        recognition.onend = () => {};
+
+        recognition.onerror = (event) => {
+            console.error('Speech recognition error:', event.error);
+            if (event.error !== 'aborted') {
+                isConversationActive = false;
+                resetConversation();
+            }
+        };
+    }
+
+    speakBtn.addEventListener('click', () => {
+        if (isConversationActive) {
+            isConversationActive = false;
+            recognition.stop();
+            speakBtn.innerHTML = '会話を再開 <span class="icon">🎤</span>';
+            speakBtn.classList.remove('is-speaking');
+        } else {
+            isConversationActive = true;
+            recognition.start();
+            speakBtn.innerHTML = '会話を一時停止 <span class="icon">⏸️</span>';
+            speakBtn.classList.add('is-speaking');
+        }
+    });
+
+    chatWindow.addEventListener('click', (event) => {
+        const listenBtn = event.target.closest('.listen-btn-bubble');
+        if (listenBtn) {
+            const text = listenBtn.dataset.textToSpeak;
+            speak(text);
+        }
+    });
+
+    levelSelect.addEventListener('change', resetConversation);
+
+    resetConversation();
+});
