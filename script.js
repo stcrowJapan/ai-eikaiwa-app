@@ -76,10 +76,10 @@ document.addEventListener('DOMContentLoaded', () => {
             model = genAI.getGenerativeModel({ 
                 model: 'gemini-1.5-flash',
                 generationConfig: {
-                    temperature: 0.7,
+                    temperature: 0.8,
                     topK: 1,
                     topP: 1,
-                    maxOutputTokens: 1024,
+                    maxOutputTokens: 2048,
                 },
                 safetySettings: [
                     { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
@@ -138,7 +138,37 @@ document.addEventListener('DOMContentLoaded', () => {
         speakBtn.disabled = true;
 
         try {
-            const systemPrompt = `English tutor for ${level}. Be friendly. If student makes errors, respond naturally then add "💡 ヒント:" with Japanese correction. Keep conversation flowing with follow-up questions.`;
+            const levelDetails = {
+                'eiken3': 'basic everyday conversation, simple present/past, hobbies, family, school',
+                'eiken-pre2': 'expressing opinions, future plans, comparing things, describing experiences', 
+                'eiken2': 'complex discussions, abstract topics, giving advice, expressing emotions'
+            };
+            
+            const systemPrompt = `You are a friendly English conversation tutor helping with ${level} level practice. 
+
+CONVERSATION RULES:
+1. Have natural, flowing conversations about ${levelDetails[level]}
+2. Give 3-4 sentence responses to keep conversation rich and engaging
+3. Always end with a follow-up question to continue the conversation
+
+HINT SYSTEM:
+When the student makes errors, provide Japanese hints in this EXACT format:
+- First: Give your complete English response (3-4 sentences + follow-up question)
+- Then: Add a NEW paragraph starting with "💡 ヒント:" 
+
+TYPES OF HINTS TO PROVIDE:
+- Grammar corrections (tense, articles, word order)
+- Vocabulary improvements (better word choices, natural expressions)
+- Response content suggestions ("You could also mention..." / "Try asking about...")
+- Conversation flow tips ("Good! Next time you could add details about...")
+
+EXAMPLE:
+Student: "I like music very much. I listen everyday."
+You: "That's wonderful! Music is such a great way to relax and enjoy life. What kind of music do you like the most? Do you have a favorite artist or band that you listen to regularly?
+
+💡 ヒント: 「everyday」ではなく「every day」（2単語）が正しいです。また、「I listen to music every day」のように「to」を入れるとより自然になります。音楽について話すときは、具体的なジャンルやアーティストを聞くと会話が盛り上がりますよ！"
+
+Be encouraging and make learning enjoyable!`;
             
             const recentHistory = conversationHistory.length > 10 ? conversationHistory.slice(-10) : conversationHistory;
 
