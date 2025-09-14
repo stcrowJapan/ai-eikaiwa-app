@@ -100,13 +100,37 @@ document.addEventListener('DOMContentLoaded', () => {
         speakBtn.disabled = true;
 
         try {
-            const systemPrompt = `English tutor for Eiken practice. Be friendly and encouraging. If student makes errors, respond naturally then add "💡 ヒント:" with Japanese correction. Ask follow-up questions.`;
+            const levelPrompts = {
+                'eiken3': 'Eiken Grade 3 (junior high school level)',
+                'eiken-pre2': 'Eiken Pre-2nd Grade (high school intermediate level)', 
+                'eiken2': 'Eiken 2nd Grade (high school advanced level)'
+            };
             
-            const recentHistory = conversationHistory.length > 6 ? conversationHistory.slice(-6) : conversationHistory;
+            const systemPrompt = `You are a friendly and encouraging English conversation tutor. Your student is practicing for ${levelPrompts[level]}. 
+
+IMPORTANT INSTRUCTIONS:
+1. **Maintain Natural Conversation**: Have a flowing, natural conversation about everyday topics appropriate for ${levelPrompts[level]}. Don't just ask random questions - build on what the student says.
+
+2. **Provide Japanese Hints**: When the student makes grammatical errors or uses unnatural expressions, ALWAYS provide corrections in this format:
+   - First, give a natural English response to their message
+   - Then add a new paragraph with: "💡 ヒント: [Japanese explanation of the error and correct usage]"
+   
+3. **Keep Conversation Flowing**: Always end with a follow-up question or comment to continue the conversation naturally. Topics should be age-appropriate and interesting.
+
+4. **Be Encouraging**: Praise good usage and be supportive of mistakes. Learning English should be enjoyable.
+
+5. **Use Appropriate Level**: 
+   - Grade 3: Simple present/past tense, basic vocabulary, everyday situations
+   - Pre-2: Present perfect, conditionals, hobbies, school life, travel
+   - Grade 2: Complex grammar, abstract topics, opinions, future plans
+
+Let's have a natural conversation! Start by greeting the student and asking about their day or interests.`;
+            
+            const recentHistory = conversationHistory.length > 10 ? conversationHistory.slice(-10) : conversationHistory;
 
             const contents = [
                 { role: 'user', parts: [{ text: systemPrompt }] },
-                { role: 'model', parts: [{ text: "Okay, I understand. I'm ready to start the conversation as a friendly English tutor." }] },
+                { role: 'model', parts: [{ text: "Hello! I'm your English conversation tutor. I'm excited to help you practice English conversation! Let's start with something simple - how are you feeling today?" }] },
                 ...recentHistory,
                 { role: 'user', parts: [{ text: message }] }
             ];
@@ -147,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
         chatWindow.innerHTML = '';
         
         if (model) {
-            addMessage("Please select a level and click 'Start Conversation' to begin.", 'ai');
+            addMessage("レベルを選択して「会話を開始」ボタンを押すと、AIとの英会話練習が始まります。間違いがあれば日本語でヒントをくれます！", 'ai');
         } else {
             addMessage("APIキーを入力してSaveボタンを押してから会話を開始してください。", 'ai');
         }
@@ -187,9 +211,15 @@ document.addEventListener('DOMContentLoaded', () => {
             speakBtn.classList.remove('is-speaking');
         } else {
             isConversationActive = true;
-            recognition.start();
             speakBtn.innerHTML = '会話を一時停止 <span class="icon">⏸️</span>';
             speakBtn.classList.add('is-speaking');
+            
+            // 会話開始時にAIから挨拶を始める
+            if (conversationHistory.length === 0) {
+                fetchAIResponse("Let's start our conversation practice!");
+            } else {
+                recognition.start();
+            }
         }
     });
 
